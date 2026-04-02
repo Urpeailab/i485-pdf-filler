@@ -127,9 +127,9 @@ Every address section has two fields that look similar but mean different things
 
 | Field | What it actually is | Example value |
 |-------|-------------------|---------------|
-| `Part4Line7_StreetName[0]` | Full street address | `"1000 WATERMAN WAY"` |
+| `Part4Line7_StreetName[0]` | Full street address | `"500 EXAMPLE DRIVE"` |
 | `P4Line7_Number[0]` | Apartment/Suite number only | `"204"` |
-| `PriorStreetName[0]` | Full prior address | `"520 ROYAL JAY LANE"` |
+| `PriorStreetName[0]` | Full prior address | `"456 OAK AVENUE"` |
 | `PriorAddress_Number[0]` | Apt number only | `""` |
 
 If you put `"520"` in `PriorAddress_Number`, the form shows it as an apartment number, not a street number.
@@ -163,7 +163,7 @@ Despite the field name `Pt5Line5_CityTownOfBirth`, the alt text says "Enter **Co
 
 ```python
 # WRONG — puts city in the country field
-f"{S}#subform[9].Pt5Line5_CityTownOfBirth[0]": "CIRCASIA",
+f"{S}#subform[9].Pt5Line5_CityTownOfBirth[0]": "GUADALAJARA",
 # CORRECT
 f"{S}#subform[9].Pt5Line5_CityTownOfBirth[0]": "COLOMBIA",
 ```
@@ -174,13 +174,13 @@ Each Part 14 entry has **separate fields** for Page, Part, and Item numbers. Do 
 
 ```python
 # WRONG — reference embedded in text
-f"{S}#subform[24].P14_Line2_AdditionalInfo[0]": "Part 1, Item 18, Page 4. 2320 MARGARITA DR...",
+f"{S}#subform[24].P14_Line2_AdditionalInfo[0]": "Part 1, Item 18, Page 4. 789 PINE ST...",
 
 # CORRECT — reference in its own fields, text is just the data
 f"{S}#subform[24].Pt9Line3a_PageNumber[0]": "4",
 f"{S}#subform[24].Pt9Line3b_PartNumber[0]": "1",
 f"{S}#subform[24].Pt9Line3c_ItemNumber[0]": "18",
-f"{S}#subform[24].P14_Line2_AdditionalInfo[0]": "2320 MARGARITA DR, MYRTLE BEACH, SC 29577. From 11/10/2019 To 07/31/2025.",
+f"{S}#subform[24].P14_Line2_AdditionalInfo[0]": "456 OAK AVE, SAVANNAH, GA 31401. From 03/01/2018 To 06/14/2020.",
 ```
 
 ## Email Extraction (for law firms)
@@ -253,15 +253,15 @@ The parser extracts from the standard URPE questionnaire format:
 
 | Field | Example |
 |-------|---------|
-| Full name | Paula Andrea Ocampo Giraldo |
-| Date of birth | 06/13/1978 |
-| Birth city/country | Circasia, Colombia |
-| SSN | 820-54-1573 |
-| Current address | 30502 Seaforth Dr, Sorrento FL 32776 |
+| Full name | John Michael Doe |
+| Date of birth | 01/15/1990 |
+| Birth city/country | Mexico City, Mexico |
+| SSN | 123-45-6789 |
+| Current address | 123 Main St, Atlanta GA 30301 |
 | Prior addresses (US) | Multiple with dates |
 | Prior address (abroad) | With dates |
-| Port of entry | Fort Lauderdale FL |
-| Entry date & status | 02/22/2019, B2 Tourist |
+| Port of entry | Miami FL |
+| Entry date & status | 06/15/2020, B2 Tourist |
 | Current employer | Company, address, position, dates |
 | Prior employment | Multiple entries with dates |
 | Parents | Names, DOB, birth places |

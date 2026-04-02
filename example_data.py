@@ -13,10 +13,10 @@ If you have a different edition, run the field dump first:
 These are real mistakes we made and fixed. Read carefully.
 
 1. ADDRESS FIELDS — "Number" means APT number, NOT street number:
-    - Part4Line7_StreetName[0] → "Street Number and Name" (FULL address: "1000 WATERMAN WAY")
+    - Part4Line7_StreetName[0] → "Street Number and Name" (FULL address: "500 EXAMPLE DRIVE")
     - P4Line7_Number[0] → "Apt/Suite/Floor Number" (ONLY apt number, e.g., "204")
     Same pattern for ALL address sections:
-    - PriorStreetName = full street address ("520 ROYAL JAY LANE")
+    - PriorStreetName = full street address ("456 OAK AVENUE")
     - PriorAddress_Number = apt number only
     - RecentStreetName = full street address (for address OUTSIDE US)
     - RecentNumber = apt number only

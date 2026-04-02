@@ -1,0 +1,22 @@
+# PDFs (don't commit filled forms with personal data!)
+*.pdf
+*.xfdf
+
+# User data files (contain personal information)
+my_data.py
+*_data.py
+!example_data.py
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

@@ -8,30 +8,50 @@ IMPORTANT: This is for the I-485 edition 01/20/25.
 If you have a different edition, run the field dump first:
     python3 fill_i485.py --dump your-blank-i485.pdf
 
-=== HOW TO FIND THE CORRECT FIELD NAMES ===
+=== CRITICAL FIELD NAMING PITFALLS ===
 
-1. Run the dump command to see all field names in your PDF:
-    python3 fill_i485.py --dump blank-i485.pdf --output fields.json
+These are real mistakes we made and fixed. Read carefully.
 
-2. For each field, the dump shows:
-    - name: The exact field name to use as the dictionary key
-    - type: "Text" (free text), "Button" (checkbox/radio), "Choice" (dropdown)
-    - valid_values: For Buttons, the ONLY values the field accepts
+1. ADDRESS FIELDS — "Number" means APT number, NOT street number:
+    - Part4Line7_StreetName[0] → "Street Number and Name" (FULL address: "1000 WATERMAN WAY")
+    - P4Line7_Number[0] → "Apt/Suite/Floor Number" (ONLY apt number, e.g., "204")
+    Same pattern for ALL address sections:
+    - PriorStreetName = full street address ("520 ROYAL JAY LANE")
+    - PriorAddress_Number = apt number only
+    - RecentStreetName = full street address (for address OUTSIDE US)
+    - RecentNumber = apt number only
 
-3. CRITICAL for Yes/No questions:
-    Each question has TWO Button fields: [0] and [1]
-    One accepts "Y" (Yes), the other accepts "N" (No)
-    You must check which index accepts which value!
+2. EMPLOYER FIELDS — EmployerName[0],[1],[2] are NOT 3 employers:
+    - EmployerName[0] = "Employer or School (current or most recent)" — left column
+    - EmployerName[1] = "Your Occupation" — right column
+    - EmployerName[2] = "Name of Employer, Company, or School" — second row
+    These are 3 fields for ONE employer, not 3 separate employers.
 
-    Example from field dump:
-        Pt8Line25_YesNo[0] → valid_values: ["N"]  ← This is the NO button
-        Pt8Line25_YesNo[1] → valid_values: ["Y"]  ← This is the YES button
+3. EMPLOYMENT SLOTS — The form has 2 complete employer blocks:
+    - Item 7 (Pages 8-9 top): Current employer (name, occupation, address, dates)
+    - Item 8 (Page 9 bottom): Second employer (name, occupation, address, dates)
+    Additional employers go in Part 14.
 
-    To answer YES → set [1] = "Y"
-    To answer NO  → set [0] = "N"
+4. "RECENT ADDRESS" SECTION — This is for address OUTSIDE the US:
+    - RecentStreetName on Page 4 = "Most Recent Address Outside the United States"
+    - It is NOT another prior US address slot.
 
-    WARNING: The [0]/[1] mapping is NOT consistent across fields!
-    Some fields have [0]=Yes, others have [0]=No. ALWAYS check the dump.
+5. PARENT BIRTH FIELDS — Pt5Line5/Pt5Line10 are COUNTRY, not city:
+    - Pt5Line5_CityTownOfBirth[0] = "Enter Country of Birth" (Parent 1)
+    - Pt5Line10_CityTownOfBirth[0] = "Enter Country of Birth" (Parent 2)
+    Despite the field name saying "CityTown", the alt text says Country.
+
+6. YES/NO CHECKBOXES — [0] and [1] indices are INCONSISTENT:
+    Each question has TWO Button fields. Check FieldStateOption to know which
+    index accepts "Y" and which accepts "N". Do NOT assume [0]=Yes, [1]=No.
+
+7. PART 14 — Has separate reference fields, don't put refs in the text:
+    Each entry has 3 separate fields:
+    - Pt9Line3a_PageNumber[i] = Page number
+    - Pt9Line3b_PartNumber[i] = Part number
+    - Pt9Line3c_ItemNumber[i] = Item number
+    The text field (P14_Line*_AdditionalInfo) should contain ONLY the data,
+    not "Part X, Item Y, Page Z" — those go in their own fields.
 
 === DATA STRUCTURE ===
 
@@ -50,19 +70,16 @@ data = {
     f"{S}#subform[0].Pt1Line1_GivenName[0]": "JOHN",
     f"{S}#subform[0].Pt1Line1_MiddleName[0]": "MICHAEL",
     f"{S}#subform[0].Pt1Line3_DOB[0]": "01/15/1990",  # MM/DD/YYYY
-    # Used other DOB? No → Check dump: [0]=Y, [1]=N → set [1]=N
+    # Used other DOB? No → [0]=Y, [1]=N → set [1]=N
     f"{S}#subform[0].Pt1Line3_YN[1]": "N",
 
     # ============================================
     # PAGE 2 — A-Number, Sex, Birth, Passport
     # ============================================
-    # Have A-Number? Yes → [0]=Y → set [0]=Y
     f"{S}#subform[1].Pt1Line4_YN[0]": "Y",
     f"{S}#subform[1].Pt1Line4_AlienNumber[0]": "123456789",
-    # Other A-Numbers? No → [1]=N → set [1]=N
     f"{S}#subform[1].Pt1Line5_YN[1]": "N",
-    # Sex: Male → [0]=F, [1]=M → set [1]=M
-    f"{S}#subform[1].Pt1Line6_CB_Sex[1]": "M",
+    f"{S}#subform[1].Pt1Line6_CB_Sex[1]": "M",  # [0]=F, [1]=M
     f"{S}#subform[1].Pt1Line7_CityTownOfBirth[0]": "MEXICO CITY",
     f"{S}#subform[1].Pt1Line7_CountryOfBirth[0]": "MEXICO",
     f"{S}#subform[1].Pt1Line8_CountryofCitizenshipNationality[0]": "MEXICO",
@@ -70,51 +87,106 @@ data = {
     f"{S}#subform[1].Pt1Line10_ExpDate[0]": "12/31/2030",
     f"{S}#subform[1].Pt1Line10_Passport[0]": "MEXICO",
     f"{S}#subform[1].Pt1Line10_CityTown[0]": "MIAMI",
-    f"{S}#subform[1].Pt1Line10_State[0]": "FL",  # State dropdown
+    f"{S}#subform[1].Pt1Line10_State[0]": "FL",
     f"{S}#subform[1].Pt1Line10_DateofArrival[0]": "06/15/2020",
 
     # ============================================
     # PAGE 3 — I-94, Status, Physical Address
     # ============================================
-    f"{S}#subform[2].Pt1Line12_Date[0]": "12/15/2020",
     f"{S}#subform[2].Pt1Line12_Status[0]": "B2",
     f"{S}#subform[2].Pt1Line14_Status[0]": "PENDING ASYLUM",
-    # Physical Address
-    f"{S}#subform[2].Pt1Line18_StreetNumberName[0]": "123 MAIN STREET APT 4B",
+    # StreetNumberName = FULL address (number + street name)
+    f"{S}#subform[2].Pt1Line18_StreetNumberName[0]": "123 MAIN STREET",
     f"{S}#subform[2].Pt1Line18_CityOrTown[0]": "ATLANTA",
     f"{S}#subform[2].Pt1Line18_State[0]": "GA",
     f"{S}#subform[2].Pt1Line18_ZipCode[0]": "30301",
 
     # ============================================
-    # PAGE 4 — Prior Address, SSN
+    # PAGE 4 — Prior Address + Address Outside US + SSN
     # ============================================
+    # Prior US Address — PriorStreetName = FULL address (NOT just street name)
+    f"{S}#subform[3].Pt1Line18_PriorStreetName[0]": "456 OAK AVENUE",
+    f"{S}#subform[3].Pt1Line18_PriorCity[0]": "MARIETTA",
+    f"{S}#subform[3].Pt1Line18_PriorState[0]": "GA",
+    f"{S}#subform[3].Pt1Line18_PriorZipCode[0]": "30060",
+    f"{S}#subform[3].Pt1Line18_PriorCountry[0]": "UNITED STATES OF AMERICA",
+    f"{S}#subform[3].Pt1Line18_PriorDateFrom[0]": "03/01/2018",
+    f"{S}#subform[3].Pt1Line18PriorDateTo[0]": "06/14/2020",
+
+    # Most Recent Address OUTSIDE the US (not another US prior address!)
+    f"{S}#subform[3].Pt1Line18_RecentStreetName[0]": "CALLE 80 #45-20",
+    f"{S}#subform[3].Pt1Line18_RecentCity[0]": "MEXICO CITY",
+    f"{S}#subform[3].Pt1Line18_RecentCountry[0]": "MEXICO",
+    f"{S}#subform[3].Pt1Line18_RecentDateFrom[0]": "01/01/2015",
+    f"{S}#subform[3].Pt1Line18_RecentDateTo[0]": "02/28/2018",
+
     f"{S}#subform[3].Pt1Line19_SSN[0]": "123456789",
 
     # ============================================
-    # PAGES 14-17 — Part 8: Yes/No Questions (Criminal, Security)
+    # PAGE 8 — Part 4: Employment Slot 1 (current)
     # ============================================
-    # IMPORTANT: For each question, check the field dump to know
-    # which index [0] or [1] is Yes vs No.
-    #
-    # Example: Pt8Line25 (Have you ever been arrested?)
-    #   [0] states=['N', 'Off'] → this is the NO button
-    #   [1] states=['Y', 'Off'] → this is the YES button
-    #   To answer No: set [0] = "N"
-    f"{S}#subform[14].Pt8Line25_YesNo[0]": "N",
-    f"{S}#subform[14].Pt8Line26_YesNo[0]": "N",
-    # ... continue for all Part 8 questions ...
+    # EmployerName[0] = employer/school name (left column)
+    # EmployerName[1] = your occupation (right column)
+    # EmployerName[2] = name of employer (second row)
+    f"{S}#subform[7].Pt4Line7_EmployerName[0]": "ACME HOSPITAL",
+    f"{S}#subform[7].Pt4Line7_EmployerName[1]": "REGISTERED NURSE",
+    f"{S}#subform[7].Pt4Line7_EmployerName[2]": "ACME HOSPITAL",
 
     # ============================================
-    # PAGE 19 — Part 9: Public Charge
+    # PAGE 9 — Employment Slot 1 address + dates
     # ============================================
-    # Household size (text field)
-    f"{S}#subform[18].Pt9Line57_HouseholdSize[0]": "4",
-    # Income bracket: A=$0-27k, B=$27k-71k, C=$71k-141k, D=$141k-321k, E=over $321k
-    f"{S}#subform[18].Pt9Line53_CB[2]": "C",  # $71,201 - $141,000
+    # Part4Line7_StreetName = FULL street address
+    # P4Line7_Number = ONLY apt/suite number
+    f"{S}#subform[8].Part4Line7_StreetName[0]": "100 HOSPITAL DRIVE",
+    f"{S}#subform[8].P4Line7_City[0]": "ATLANTA",
+    f"{S}#subform[8].P4Line7_State[0]": "GA",
+    f"{S}#subform[8].P4Line7_ZipCode[0]": "30301",
+    f"{S}#subform[8].P4Line7_Country[0]": "UNITED STATES OF AMERICA",
+    f"{S}#subform[8].Pt4Line7_DateFrom[0]": "01/15/2023",
+    f"{S}#subform[8].Pt4Line7_DateTo[0]": "PRESENT",
+
+    # Employment Slot 2 (Item 8 — second employer, Page 9 bottom)
+    f"{S}#subform[8].Pt4Line8_EmployerName[0]": "CITY MEDICAL CENTER",
+    f"{S}#subform[8].Pt4Line8_Occupation[0]": "MEDICAL ASSISTANT",
+    f"{S}#subform[8].P4Line8_StreetName[0]": "200 HEALTH BLVD",
+    f"{S}#subform[8].P4Line8_City[0]": "MARIETTA",
+    f"{S}#subform[8].P4Line8_State[0]": "GA",
+    f"{S}#subform[8].P4Line8_ZipCode[0]": "30060",
+    f"{S}#subform[8].P4Line8_Country[0]": "UNITED STATES OF AMERICA",
+    f"{S}#subform[8].Pt4Line8_DateFrom[0]": "06/01/2020",
+    f"{S}#subform[8].Pt4Line8_DateTo[0]": "01/14/2023",
 
     # ============================================
-    # PAGE 23 — Contact Info & Signature
+    # PAGE 9 — Part 5: Parents
     # ============================================
-    f"{S}#subform[22].Pt3Line3_DaytimePhoneNumber1[0]": "4045551234",
-    f"{S}#subform[22].Pt3Line7b_DateofSignature[0]": "04/02/2026",
+    f"{S}#subform[8].Pt5Line1_FamilyName[0]": "DOE",
+    f"{S}#subform[8].Pt5Line1_GivenName[0]": "ROBERT",
+    f"{S}#subform[8].Pt5Line3_DateofBirth[0]": "03/20/1960",
+    # Parent 1 Country of Birth (field name says CityTown but it means COUNTRY)
+    f"{S}#subform[9].Pt5Line5_CityTownOfBirth[0]": "MEXICO",
+
+    # Mother
+    f"{S}#subform[9].Pt5Line6_FamilyName[0]": "GARCIA LOPEZ",
+    f"{S}#subform[9].Pt5Line6_GivenName[0]": "MARIA",
+    f"{S}#subform[9].Pt5Line8_DateofBirth[0]": "07/10/1962",
+    # Parent 2 Country of Birth (field name says CityTown but it means COUNTRY)
+    f"{S}#subform[9].Pt5Line10_CityTownOfBirth[0]": "MEXICO",
+
+    # ============================================
+    # PAGE 24 — Part 14: Additional Information
+    # ============================================
+    # Each entry has SEPARATE fields for Page/Part/Item references
+    # Do NOT write "Part X, Item Y" inside the text — use the reference fields
+
+    # Entry 2: Third employer (doesn't fit in the 2 form slots)
+    f"{S}#subform[24].Pt9Line3a_PageNumber[0]": "8",       # Page Number
+    f"{S}#subform[24].Pt9Line3b_PartNumber[0]": "4",       # Part Number
+    f"{S}#subform[24].Pt9Line3c_ItemNumber[0]": "7",       # Item Number
+    f"{S}#subform[24].P14_Line2_AdditionalInfo[0]": "URGENT CARE CLINIC, 300 ELM ST, ATLANTA GA 30301. Receptionist. From 01/2018 To 05/2020.",
+
+    # Entry 3: Additional prior address
+    f"{S}#subform[24].Pt9Line3a_PageNumber[1]": "4",
+    f"{S}#subform[24].Pt9Line3b_PartNumber[1]": "1",
+    f"{S}#subform[24].Pt9Line3c_ItemNumber[1]": "18",
+    f"{S}#subform[24].P14_Line3_AdditionalInfo[0]": "789 PINE ST, SAVANNAH, GA 31401. From 01/2015 To 02/2018.",
 }

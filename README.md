@@ -117,6 +117,95 @@ Pt8Line25_YesNo[1]  valid_values: ["Y"]   ← Setting this to "Y" marks YES
 
 If you set a value that doesn't match the field's valid options, pdftk will silently accept it but the checkbox **won't render** in the PDF. The verification step catches this.
 
+## Email Extraction (for law firms)
+
+If your clients send their questionnaire responses via email, the `extract_from_email.py` script can fetch and parse the data directly from Gmail — no manual copy-paste needed.
+
+### How it works
+
+```
+┌──────────────────────┐
+│ Client fills          │
+│ questionnaire &       │──→ Sends email to firm
+│ hits Reply            │
+└──────────────────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ extract_from_email.py │  ← Authenticates via OAuth2,
+│                       │     fetches email via Gmail API,
+│                       │     parses structured text
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Parsed data dict      │  ← name, DOB, SSN, addresses,
+│                       │     employment, parents, spouse...
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ applicant_data.py     │  ← Map parsed values to PDF fields
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ fill_i485.py          │  ← Generates the filled PDF
+└──────────────────────┘
+```
+
+### Usage
+
+```bash
+# Search Gmail for the questionnaire email
+python3 extract_from_email.py --account firm@company.com --search "from:karen cuestionario i-485"
+
+# Fetch a specific email by ID
+python3 extract_from_email.py --account firm@company.com --message-id 19d4f572956effdc
+
+# Just dump the email content (for inspection)
+python3 extract_from_email.py --account firm@company.com --search "from:karen" --dump-only
+```
+
+### Gmail API Setup (one-time)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create OAuth 2.0 credentials (Desktop app type)
+3. Download the JSON → save as `~/Library/Application Support/gogcli/credentials.json`
+4. Enable the **Gmail API** in your Google Cloud project
+5. Run the OAuth flow once to get a refresh token, then store it in macOS Keychain:
+
+```bash
+security add-generic-password -s "gogcli" \
+    -a "token:default:your@email.com" \
+    -w '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
+```
+
+### What it parses
+
+The parser extracts from the standard URPE questionnaire format:
+
+| Field | Example |
+|-------|---------|
+| Full name | Paula Andrea Ocampo Giraldo |
+| Date of birth | 06/13/1978 |
+| Birth city/country | Circasia, Colombia |
+| SSN | 820-54-1573 |
+| Current address | 30502 Seaforth Dr, Sorrento FL 32776 |
+| Prior addresses (US) | Multiple with dates |
+| Prior address (abroad) | With dates |
+| Port of entry | Fort Lauderdale FL |
+| Entry date & status | 02/22/2019, B2 Tourist |
+| Current employer | Company, address, position, dates |
+| Prior employment | Multiple entries with dates |
+| Parents | Names, DOB, birth places |
+| Spouse | Name, DOB, A-number, SSN |
+| Children | Name, DOB, A-number |
+| Biometrics | Height, weight, eye/hair color |
+| Criminal/violations | Yes/No answers |
+
+The parser uses regex patterns tuned for Spanish-language questionnaires, but can be adapted for English versions.
+
 ## Architecture
 
 ```
@@ -160,8 +249,9 @@ We tried several approaches before landing on this one:
 
 ```
 i485-pdf-filler/
-├── fill_i485.py      # Main tool (dump, fill, verify)
-├── example_data.py   # Sample data file with field documentation
+├── fill_i485.py              # Main tool (dump, fill, verify)
+├── extract_from_email.py     # Gmail data extraction + questionnaire parser
+├── example_data.py           # Sample data file with field documentation
 ├── field_reference/
 │   └── i485_01-20-25_fields.md  # Complete field reference for edition 01/20/25
 └── README.md

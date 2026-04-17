@@ -315,13 +315,44 @@ We tried several approaches before landing on this one:
 
 ```
 i485-pdf-filler/
-├── fill_i485.py              # Main tool (dump, fill, verify)
+├── fill_i485.py              # v1: pdftk + XFDF, one applicant at a time
+├── fill_i485_v2.py           # v2: pypdf + principal/derivative family support
 ├── extract_from_email.py     # Gmail data extraction + questionnaire parser
 ├── example_data.py           # Sample data file with field documentation
+├── example_family_data.py    # Sample data schema for v2 principal + derivative
 ├── field_reference/
 │   └── i485_01-20-25_fields.md  # Complete field reference for edition 01/20/25
+├── docs/
+│   └── methodology-family-cases.md  # End-to-end playbook for family cases
 └── README.md
 ```
+
+## v2 — Family cases (principal + derivatives)
+
+When one approved I-360 or I-140 unlocks I-485s for the principal **and**
+their spouse/children, use `fill_i485_v2.py`. The v2 filler:
+
+- Takes `--principal` + `--derivatives` and runs them in one call.
+- Auto-inherits the principal's I-360 receipt number and name onto each
+  derivative's Part 2.
+- Uses `pypdf` directly (no pdftk binary required).
+- Dynamically resolves checkbox "on" values from each field's `/_States_`
+  so you never have to guess `/Y` vs `/1` vs `/F`.
+- Maps short field names (`Pt1Line1_FamilyName[0]`) to the PDF's full
+  internal path at fill time, surviving minor reshuffles between form
+  editions.
+
+```bash
+python3 fill_i485_v2.py \
+    --blank blank-i485.pdf \
+    --principal principal.json \
+    --derivatives spouse.json child1.json child2.json \
+    --output-dir ./filled
+```
+
+See `example_family_data.py` for the per-applicant JSON schema, and
+`docs/methodology-family-cases.md` for the full end-to-end playbook
+(inventory → Visa Bulletin gating → fill → gaps document → deliver).
 
 ## Troubleshooting
 

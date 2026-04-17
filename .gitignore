@@ -6,6 +6,7 @@
 my_data.py
 *_data.py
 !example_data.py
+!example_family_data.py
 
 # Python
 __pycache__/
